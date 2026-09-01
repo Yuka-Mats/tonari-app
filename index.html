@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#12141a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>AI隣のお兄さん</title>
+<style>
+  :root {
+    --bg: #12141a;
+    --panel: #1c1f28;
+    --panel2: #242834;
+    --text: #e8eaf0;
+    --sub: #9aa0b0;
+    --accent: #4f8cff;
+    --accent2: #6ee7b7;
+    --danger: #ff6b6b;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", sans-serif;
+    line-height: 1.7;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 2px 12px;
+  }
+  header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: .02em; }
+  header h1 .emoji { margin-right: 6px; }
+  #btnSettings {
+    background: var(--panel); border: 1px solid #333a4a; color: var(--sub);
+    border-radius: 10px; padding: 8px 12px; font-size: .95rem; cursor: pointer;
+  }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab {
+    flex: 1; text-align: center; padding: 10px 0; border-radius: var(--radius);
+    background: var(--panel); color: var(--sub); font-size: .95rem; cursor: pointer;
+    border: 1px solid transparent; user-select: none;
+  }
+  .tab.active { background: var(--panel2); color: var(--text); border-color: var(--accent); font-weight: 700; }
+  .tab .badge {
+    display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px;
+    background: var(--accent); color: #fff; border-radius: 10px; font-size: .78rem;
+  }
+
+  .pane { display: none; }
+  .pane.active { display: block; }
+
+  /* ---- いま聞く ---- */
+  .topicbox { margin-bottom: 10px; }
+  #topic {
+    width: 100%; padding: 10px 12px; font-size: .9rem; border-radius: 10px;
+    border: 1px dashed #3a4256; background: transparent; color: var(--accent2);
+    outline: none;
+  }
+  #topic:focus { border-color: var(--accent2); border-style: solid; }
+  #topic::placeholder { color: #5b6274; }
+  #topicNote { font-size: .78rem; color: #5b6274; margin-top: 4px; padding-left: 2px; }
+  #topicNote.on { color: var(--accent2); }
+  .askbox { display: flex; gap: 8px; }
+  #q {
+    flex: 1; padding: 14px; font-size: 1.05rem; border-radius: var(--radius);
+    border: 1px solid #333a4a; background: var(--panel); color: var(--text);
+    outline: none;
+  }
+  #q:focus { border-color: var(--accent); }
+  #btnAsk {
+    padding: 0 22px; font-size: 1.05rem; font-weight: 700; border-radius: var(--radius);
+    border: none; background: var(--accent); color: #fff; cursor: pointer;
+    min-width: 88px;
+  }
+  #btnAsk:disabled { opacity: .5; }
+
+  #status { margin: 12px 2px; color: var(--sub); font-size: .9rem; min-height: 1.4em; }
+  #status .timer { color: var(--accent2); font-variant-numeric: tabular-nums; }
+
+  #answer {
+    display: none; background: var(--panel2); border-radius: var(--radius);
+    padding: 18px; font-size: 1.15rem; border-left: 4px solid var(--accent2);
+    white-space: pre-wrap; word-break: break-word;
+  }
+  #answerMeta { display: none; margin-top: 10px; color: var(--sub); font-size: .85rem; text-align: right; }
+  .hint { margin-top: 18px; text-align: center; color: var(--sub); font-size: .85rem; }
+
+  /* ---- あとで復習 ---- */
+  .reviewTop { display: flex; gap: 8px; margin-bottom: 14px; }
+  .reviewTop button {
+    flex: 1; padding: 11px 0; border-radius: var(--radius); font-size: .92rem; cursor: pointer;
+    border: 1px solid #333a4a; background: var(--panel); color: var(--text);
+  }
+  #btnExplainAll { border-color: var(--accent); }
+  #btnClear { color: var(--danger); }
+
+  .item {
+    background: var(--panel); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+  }
+  .item .term { font-weight: 700; font-size: 1.02rem; }
+  .item .short { color: var(--sub); font-size: .92rem; margin-top: 4px; white-space: pre-wrap; }
+  .item .detail {
+    margin-top: 10px; padding-top: 10px; border-top: 1px dashed #3a4256;
+    font-size: .97rem; white-space: pre-wrap; word-break: break-word;
+  }
+  .item .btnDetail {
+    margin-top: 10px; padding: 8px 14px; border-radius: 10px; font-size: .88rem; cursor: pointer;
+    border: 1px solid var(--accent); background: transparent; color: var(--accent);
+  }
+  .item .ts { color: #5b6274; font-size: .78rem; margin-top: 6px; }
+  .item .verdict { margin-top: 8px; font-size: .8rem; color: var(--sub); }
+  .hazard {
+    margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+    background: #3a2a18; border: 1px solid #7a5a2a; font-size: .9rem;
+  }
+  .hazard .h-title { color: #ffce7a; font-weight: 700; }
+  .hazard .h-q {
+    margin-top: 8px; padding: 8px 10px; background: var(--panel);
+    border-radius: 8px; color: var(--text); font-size: .88rem; white-space: pre-wrap;
+  }
+  .confirm {
+    margin-top: 10px; font-size: .88rem; color: var(--sub);
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+  }
+  .confirm input { width: 18px; height: 18px; }
+  .confirm.done { color: var(--accent2); }
+  #emptyMsg { text-align: center; color: var(--sub); padding: 40px 0; font-size: .95rem; }
+
+  /* ---- 設定モーダル ---- */
+  #overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 10;
+  }
+  #modal {
+    display: none; position: fixed; z-index: 11; left: 50%; top: 50%;
+    transform: translate(-50%,-50%); width: min(92vw, 480px);
+    background: var(--panel2); border-radius: var(--radius); padding: 22px;
+  }
+  #modal h2 { font-size: 1.05rem; margin-bottom: 12px; }
+  #modal p { font-size: .88rem; color: var(--sub); margin-bottom: 10px; }
+  #modal a { color: var(--accent); }
+  #apiKey {
+    width: 100%; padding: 12px; font-size: 1rem; border-radius: 10px;
+    border: 1px solid #333a4a; background: var(--panel); color: var(--text); outline: none;
+    margin-bottom: 14px;
+  }
+  #modal .row { display: flex; gap: 8px; }
+  #modal .row button {
+    flex: 1; padding: 11px 0; border-radius: 10px; font-size: .95rem; cursor: pointer; border: none;
+  }
+  #btnSaveKey { background: var(--accent); color: #fff; font-weight: 700; }
+  #btnCloseModal { background: var(--panel); color: var(--sub); }
+  .keynote { font-size: .8rem !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="emoji">🙋‍♂️</span>AI隣のお兄さん</h1>
+    <button id="btnSettings">⚙️ 設定</button>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" id="tabAsk">いま聞く</div>
+    <div class="tab" id="tabReview">あとで復習<span class="badge" id="cnt" style="display:none">0</span></div>
+  </div>
+
+  <!-- いま聞く -->
+  <div class="pane active" id="paneAsk">
+    <div class="topicbox">
+      <input id="topic" type="text" placeholder="📺 ウェビナーのお題（例：Claude Code活用講座）※入れると答えが賢くなる" autocomplete="off">
+      <div id="topicNote">お題なし：初心者向けのやさしい答えで返します</div>
+    </div>
+    <div class="askbox">
+      <input id="q" type="text" placeholder="わからない言葉をそのまま入力" autocomplete="off" enterkeyhint="send">
+      <button id="btnAsk">聞く</button>
+    </div>
+    <div id="status"></div>
+    <div id="answer"></div>
+    <div id="answerMeta"></div>
+    <div class="hint">答えを読んだら、すぐウェビナーに戻ろう。詳しい解説は終わってから「あとで復習」で。</div>
+  </div>
+
+  <!-- あとで復習 -->
+  <div class="pane" id="paneReview">
+    <div class="reviewTop">
+      <button id="btnExplainAll">📖 まとめて全部解説</button>
+      <button id="btnClear">🗑 履歴を消す</button>
+    </div>
+    <div id="list"></div>
+    <div id="emptyMsg">まだ履歴がありません。<br>ウェビナー中に聞いた言葉が、ここに溜まっていきます。</div>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div id="overlay"></div>
+<div id="modal">
+  <h2>⚙️ 設定：Gemini APIキー</h2>
+  <p>答えを返すために、Google の無料APIキーが必要です。<br>
+  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> で「APIキーを作成」→ コピーして下に貼り付けてください。</p>
+  <input id="apiKey" type="password" placeholder="APIキーを貼り付け" autocomplete="off">
+  <p class="keynote">🔒 キーはこの端末のブラウザの中だけに保存されます。外部には送られません（Googleへの質問送信時を除く）。他人には教えないでください。</p>
+  <div class="row">
+    <button id="btnSaveKey">保存</button>
+    <button id="btnCloseModal">閉じる</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var LS_KEY = "tonari_apikey";
+  var LS_HIST = "tonari_history";
+  var LS_TOPIC = "tonari_topic";
+  var API_BASE = "https://generativelanguage.googleapis.com/v1beta/models/";
+  var MODEL_QUICK = "gemini-2.5-flash-lite";
+  var MODEL_DETAIL = "gemini-2.5-flash";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var hist = load();
+
+  /* ---------- storage ---------- */
+  function load() {
+    try { return JSON.parse(localStorage.getItem(LS_HIST)) || []; } catch (e) { return []; }
+  }
+  function save() { localStorage.setItem(LS_HIST, JSON.stringify(hist)); }
+  function getKey() { return localStorage.getItem(LS_KEY) || ""; }
+  function getTopic() { return ($("topic").value || "").trim(); }
+  function updateTopicNote() {
+    var note = $("topicNote");
+    var t = getTopic();
+    if (t) { note.textContent = "✓ お題モード：「" + t + "」の文脈で答えます"; note.className = "on"; }
+    else { note.textContent = "お題なし：初心者向けのやさしい答えで返します"; note.className = ""; }
+  }
+
+  /* ---------- Gemini ---------- */
+  function callGemini(model, prompt, cb, errCb) {
+    var key = getKey();
+    if (!key) { openModal(); errCb("先にAPIキーを設定してください（⚙️設定）"); return; }
+    fetch(API_BASE + model + ":generateContent?key=" + encodeURIComponent(key), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } }
+      })
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.json().then(function (j) {
+          var msg = (j && j.error && j.error.message) || ("HTTP " + r.status);
+          if (r.status === 400 && /API key/i.test(msg)) msg = "APIキーが正しくないようです。⚙️設定から貼り直してください。";
+          if (r.status === 429) msg = "少し使いすぎたみたいです。1分ほど待ってからもう一度どうぞ。";
+          throw new Error(msg);
+        }, function () { throw new Error("HTTP " + r.status); });
+      }
+      return r.json();
+    }).then(function (data) {
+      var parts = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
+      var text = parts ? parts.map(function (p) { return p.text || ""; }).join("") : "";
+      if (!text) throw new Error("答えを受け取れませんでした。もう一度試してください。");
+      cb(text.trim());
+    }).catch(function (e) {
+      errCb(e.message || "通信エラーです。電波を確認してもう一度どうぞ。");
+    });
+  }
+
+  /* ---------- いま聞く ---------- */
+  var timerId = null;
+  function startTimer() {
+    var t0 = Date.now();
+    $("status").innerHTML = 'お兄さんが考え中… <span class="timer">0.0秒</span>';
+    timerId = setInterval(function () {
+      var el = $("status").querySelector(".timer");
+      if (el) el.textContent = ((Date.now() - t0) / 10 / 100).toFixed(1) + "秒";
+    }, 100);
+    return t0;
+  }
+  function stopTimer() { clearInterval(timerId); timerId = null; }
+
+  function ask() {
+    var q = $("q").value.trim();
+    if (!q) { $("q").focus(); return; }
+    if (!getKey()) { openModal(); return; }
+
+    $("btnAsk").disabled = true;
+    $("answer").style.display = "none";
+    $("answerMeta").style.display = "none";
+    var t0 = startTimer();
+
+    // 2段階方式：①ベース＝初心者向け ②お題があればその文脈で解釈
+    var topic = getTopic();
+    var prompt =
+      "ウェビナー視聴中の初心者が、わからない言葉・内容を聞いています。" +
+      "専門用語を使わず、初心者にわかる言葉で最短で答えてください。1〜2文、80字以内。" +
+      "前置き・挨拶・言い換えの繰り返しは禁止。結論だけ。\n" +
+      (topic ? "視聴中のウェビナーのお題：「" + topic + "」。質問の言葉はこのお題の文脈・分野の意味で解釈して答えること。\n" : "") +
+      "質問：" + q;
+
+    callGemini(MODEL_QUICK, prompt, function (text) {
+      stopTimer();
+      var sec = ((Date.now() - t0) / 1000).toFixed(1);
+      $("status").textContent = "";
+      $("answer").textContent = text;
+      $("answer").style.display = "block";
+      $("answerMeta").textContent = sec + "秒で回答";
+      $("answerMeta").style.display = "block";
+
+      hist.unshift({ q: q, a: text, d: "", t: topic, ts: Date.now() });
+      save(); renderCount(); renderList();
+
+      $("q").value = "";
+      $("btnAsk").disabled = false;
+      $("q").focus();
+    }, function (msg) {
+      stopTimer();
+      $("status").textContent = "⚠ " + msg;
+      $("btnAsk").disabled = false;
+    });
+  }
+
+  /* ---------- あとで復習 ---------- */
+  function fmt(ts) {
+    var d = new Date(ts);
+    return (d.getMonth() + 1) + "/" + d.getDate() + " " +
+      ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
+  }
+  function detailPrompt(item) {
+    return "ウェビナー中に「" + item.q + "」がわからなかった初心者向けの復習解説を書いてください。" +
+      (item.t ? "そのウェビナーのお題は「" + item.t + "」なので、その文脈・分野の意味で解説すること。" : "") +
+      "初心者にもわかる言葉で、身近な例えを1つ入れて、250字前後。見出しや箇条書きは使わず、読みやすい文章で。" +
+      "\n\n最後に必ず改行して、機械判定用の1行だけを次の形式で付けてください（この行には他の記号や文を入れない）：" +
+      "【確認】関連:○ ｜ 信頼:確信" +
+      "\n※質問語がお題とズレている、または文脈を推測で補って答えたら『関連:⚠』『信頼:推測』にすること。お題が無い場合も『関連:⚠』にすること。";
+  }
+  // このアプリはAIの答えを鵜呑みにさせない。あやしい所を鳴らし、最終確認は人間（講師）に返す。
+  function needConfirm(item) {
+    return !!item.d && (!item.t || item.rel === "⚠" || item.conf === "推測");
+  }
+  function teacherQ(item) {
+    var pre = item.t ? "「" + item.t + "」の話で出てきた" : "";
+    return pre + "「" + item.q + "」について、初心者にもわかるように教えていただけますか？";
+  }
+  function renderCount() {
+    var c = $("cnt");
+    if (hist.length) { c.style.display = "inline-block"; c.textContent = hist.length; }
+    else { c.style.display = "none"; }
+  }
+  function renderList() {
+    var list = $("list");
+    list.innerHTML = "";
+    $("emptyMsg").style.display = hist.length ? "none" : "block";
+    hist.forEach(function (item, i) {
+      var div = document.createElement("div");
+      div.className = "item";
+      var html = '<div class="term">' + esc(item.q) + '</div>' +
+                 '<div class="short">' + esc(item.a) + '</div>';
+      if (item.d) {
+        html += '<div class="detail">' + esc(item.d) + '</div>';
+        if (item.rel || item.conf) {
+          html += '<div class="verdict">AIの自己判定：関連' + esc(item.rel || "?") + '／' + esc(item.conf || "?") + '</div>';
+        }
+        if (needConfirm(item) && !item.confirmed) {
+          html += '<div class="hazard">' +
+                    '<span class="h-title">⚠ 講師に確認しましょう</span>' +
+                    '<div>お題との関連が弱い、または推測が入っているかもしれません。念のため講師に聞くと確実です。</div>' +
+                    '<div class="h-q">' + esc(teacherQ(item)) + '</div>' +
+                  '</div>';
+        }
+        html += '<label class="confirm' + (item.confirmed ? ' done' : '') + '">' +
+                  '<input type="checkbox" class="chk" data-i="' + i + '"' + (item.confirmed ? ' checked' : '') + '>' +
+                  (item.confirmed ? '✓ 講師・資料で確認済み' : '講師・資料で確認したらチェック') +
+                '</label>';
+      } else {
+        html += '<button class="btnDetail" data-i="' + i + '">詳しく解説してもらう</button>';
+      }
+      html += '<div class="ts">' + fmt(item.ts) + '</div>';
+      div.innerHTML = html;
+      list.appendChild(div);
+    });
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function explainOne(i, btn, done) {
+    var item = hist[i];
+    if (!item || item.d) { if (done) done(); return; }
+    if (btn) { btn.disabled = true; btn.textContent = "解説を書いています…"; }
+    callGemini(MODEL_DETAIL, detailPrompt(item), function (text) {
+      // AIの自己判定（関連・信頼）を読み取り、本文からは取り除く
+      var m = text.match(/【確認】\s*関連\s*[:：]\s*([○⚠])\s*[｜|\/]\s*信頼\s*[:：]\s*(確信|推測)/);
+      if (m) { item.rel = m[1]; item.conf = m[2]; text = text.replace(m[0], "").trim(); }
+      else { item.rel = ""; item.conf = ""; }
+      item.d = text; save(); renderList();
+      if (done) done();
+    }, function (msg) {
+      if (btn) { btn.disabled = false; btn.textContent = "詳しく解説してもらう"; }
+      alert("⚠ " + msg);
+      if (done) done(true);
+    });
+  }
+  function explainAll() {
+    var targets = [];
+    hist.forEach(function (it, i) { if (!it.d) targets.push(i); });
+    if (!targets.length) { alert("すべて解説済みです。"); return; }
+    var btn = $("btnExplainAll");
+    btn.disabled = true;
+    var n = 0;
+    (function next(stopped) {
+      if (stopped || n >= targets.length) {
+        btn.disabled = false; btn.textContent = "📖 まとめて全部解説";
+        return;
+      }
+      btn.textContent = "📖 解説中… " + (n + 1) + "/" + targets.length;
+      explainOne(targets[n], null, function (err) { n++; next(err); });
+    })();
+  }
+
+  /* ---------- 設定 ---------- */
+  function openModal() {
+    $("apiKey").value = getKey();
+    $("overlay").style.display = "block";
+    $("modal").style.display = "block";
+  }
+  function closeModal() {
+    $("overlay").style.display = "none";
+    $("modal").style.display = "none";
+  }
+
+  /* ---------- events ---------- */
+  $("topic").addEventListener("input", function () {
+    localStorage.setItem(LS_TOPIC, getTopic());
+    updateTopicNote();
+  });
+  $("btnAsk").addEventListener("click", ask);
+  $("q").addEventListener("keydown", function (e) { if (e.key === "Enter") ask(); });
+
+  $("tabAsk").addEventListener("click", function () { switchTab(true); });
+  $("tabReview").addEventListener("click", function () { switchTab(false); });
+  function switchTab(askMode) {
+    $("tabAsk").classList.toggle("active", askMode);
+    $("tabReview").classList.toggle("active", !askMode);
+    $("paneAsk").classList.toggle("active", askMode);
+    $("paneReview").classList.toggle("active", !askMode);
+    if (askMode) $("q").focus();
+  }
+
+  $("list").addEventListener("click", function (e) {
+    var t = e.target;
+    if (t.classList.contains("btnDetail")) explainOne(parseInt(t.dataset.i, 10), t);
+  });
+  // 人間の関所：講師・資料で確認したらチェック（＝人間が確定）
+  $("list").addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.classList.contains("chk")) {
+      var i = parseInt(t.dataset.i, 10);
+      if (hist[i]) { hist[i].confirmed = t.checked; save(); renderList(); }
+    }
+  });
+  $("btnExplainAll").addEventListener("click", explainAll);
+  $("btnClear").addEventListener("click", function () {
+    if (confirm("履歴をすべて消します。よろしいですか？")) {
+      hist = []; save(); renderCount(); renderList();
+    }
+  });
+
+  $("btnSettings").addEventListener("click", openModal);
+  $("btnCloseModal").addEventListener("click", closeModal);
+  $("overlay").addEventListener("click", closeModal);
+  $("btnSaveKey").addEventListener("click", function () {
+    var v = $("apiKey").value.trim();
+    if (!v) { alert("APIキーを貼り付けてください。"); return; }
+    localStorage.setItem(LS_KEY, v);
+    closeModal();
+    $("q").focus();
+  });
+
+  /* ---------- init ---------- */
+  $("topic").value = localStorage.getItem(LS_TOPIC) || "";
+  updateTopicNote();
+  renderCount(); renderList();
+  if (!getKey()) openModal();
+})();
+</script>
+</body>
+</html>
